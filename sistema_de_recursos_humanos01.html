@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de RRHH - Generador de Boletas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* Estilos específicos para la impresión */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                /* Ajustes para parecerse más a la boleta real impresa */
+                font-family: Arial, sans-serif !important; 
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-border {
+                border: 2px solid #1e3a8a !important; /* Azul oscuro */
+                border-radius: 8px !important;
+            }
+            .print-text-blue {
+                color: #1e3a8a !important;
+            }
+            /* Forzar colores de fondo e impresión exacta */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+
+        /* Estilos visuales para la boleta en pantalla simulando la impresa */
+        .boleta-container {
+            border: 2px solid #1e3a8a;
+            border-radius: 12px;
+            padding: 20px;
+            background-color: white;
+            color: #1e3a8a; /* Color base texto */
+            font-family: Arial, sans-serif;
+            position: relative;
+        }
+        
+        .boleta-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .boleta-title-main {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .boleta-info-left p {
+            margin: 2px 0;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .boleta-info-center {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-box {
+            border: 1px solid #1e3a8a;
+            padding: 4px 10px;
+            min-width: 250px;
+            text-align: center;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .input-box-label {
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+
+        .boleta-logo {
+            width: 100px;
+            height: 100px;
+            border: 1px dashed #1e3a8a; /* Placeholder para el logo real */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            text-align: center;
+            border-radius: 50%;
+        }
+
+        .boleta-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            border: 2px solid #1e3a8a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .boleta-table th, .boleta-table td {
+            border: 1px solid #1e3a8a;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .boleta-table th {
+            font-weight: normal;
+            text-transform: uppercase;
+        }
+        
+        .boleta-table td {
+            color: #6b7280; /* Gris para los números en pantalla, aunque la impresión es azul/negro */
+        }
+        @media print {
+            .boleta-table td { color: #4b5563 !important; }
+        }
+
+        .coti-header {
+            border-bottom: 1px solid #1e3a8a !important;
+            letter-spacing: 2px;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-active { display: flex; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-indigo-800 text-white flex flex-col hidden md:flex h-full">
+        <div class="p-6 border-b border-indigo-700">
+            <h2 class="text-2xl font-bold flex items-center gap-2">
+                <i class="fas fa-users-cog"></i> RRHH Pro
+            </h2>
+            <p class="text-indigo-300 text-sm mt-1">Gestión de Planillas</p>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button onclick="showSection('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 bg-indigo-900 rounded-lg text-left transition-colors font-medium">
+                <i class="fas fa-home w-5 text-center"></i> Inicio
+            </button>
+            <button onclick="showSection('empleados')" id="nav-empleados" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-700 rounded-lg text-left transition-colors text-indigo-100">
+                <i class="fas fa-user-friends w-5 text-center"></i> Empleados
+            </button>
+            <button onclick="showSection('planilla')" id="nav-planilla" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-700 rounded-lg text-left transition-colors text-indigo-100">
+                <i class="fas fa-file-invoice-dollar w-5 text-center"></i> Generar Planilla
+            </button>
+            <button onclick="showSection('config')" id="nav-config" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-700 rounded-lg text-left transition-colors text-indigo-100">
+                <i class="fas fa-cogs w-5 text-center"></i> Configuración
+            </button>
+        </nav>
+        <div class="p-4 border-t border-indigo-700 text-xs text-indigo-400 text-center">
+            Sonsonate Este, Armenia<br>
+            Lic. Recursos Humanos
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- Header Móvil -->
+        <header class="bg-white shadow-sm p-4 flex justify-between items-center md:hidden">
+            <h1 class="text-xl font-bold text-indigo-800">RRHH Pro</h1>
+            <button id="mobile-menu-btn" class="text-gray-600 focus:outline-none">
+                <i class="fas fa-bars text-2xl"></i>
+            </button>
+        </header>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+            
+            <!-- SECCIÓN: Dashboard -->
+            <section id="sec-dashboard" class="block animate-fade-in">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Panel General</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center gap-4">
+                        <div class="bg-blue-100 p-4 rounded-lg text-blue-600">
+                            <i class="fas fa-users text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-medium">Total Empleados</p>
+                            <p class="text-2xl font-bold text-gray-800" id="stat-total-emp">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center gap-4">
+                        <div class="bg-green-100 p-4 rounded-lg text-green-600">
+                            <i class="fas fa-money-bill-wave text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-medium">Última Planilla Estimada</p>
+                            <p class="text-2xl font-bold text-gray-800" id="stat-total-planilla">$0.00</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center gap-4">
+                        <div class="bg-purple-100 p-4 rounded-lg text-purple-600">
+                            <i class="fas fa-calendar-alt text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-medium">Fecha Actual</p>
+                            <p class="text-lg font-bold text-gray-800" id="stat-fecha"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
+                    <img src="https://placehold.co/150x150/e0e7ff/4f46e5?text=RRHH" alt="Logo" class="mx-auto rounded-full mb-4">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">Bienvenido, Licenciado</h3>
+                    <p class="text-gray-600 max-w-2xl mx-auto">Este sistema está diseñado para facilitar su trabajo. Comience registrando a sus empleados en la sección "Empleados" y luego diríjase a "Generar Planilla" para emitir e imprimir las boletas de pago administrativas del Distrito de Armenia.</p>
+                    <button onclick="showSection('empleados')" class="mt-6 bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 transition">
+                        Comenzar con Empleados <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- SECCIÓN: Empleados -->
+            <section id="sec-empleados" class="hidden animate-fade-in">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-3xl font-bold text-gray-800">Listado de Empleados</h2>
+                    <button onclick="openModal('modal-empleado')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Nuevo Empleado
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-600 text-sm uppercase tracking-wider">
+                                    <th class="p-4 border-b">ID</th>
+                                    <th class="p-4 border-b">Nombre Completo</th>
+                                    <th class="p-4 border-b">Cargo / Tipo</th>
+                                    <th class="p-4 border-b">Sueldo Base</th>
+                                    <th class="p-4 border-b">AFP Preferida</th>
+                                    <th class="p-4 border-b text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="empleados-tbody" class="text-gray-700 text-sm divide-y divide-gray-100">
+                                <!-- Filas de empleados dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="empleados-empty" class="p-8 text-center text-gray-500 hidden">
+                        <i class="fas fa-folder-open text-4xl mb-3 text-gray-300"></i>
+                        <p>No hay empleados registrados. Haga clic en "Nuevo Empleado" para comenzar.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN: Generar Planilla -->
+            <section id="sec-planilla" class="hidden animate-fade-in">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Emisión de Boletas de Pago</h2>
+                
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <!-- Panel Izquierdo: Selección y Cálculo -->
+                    <div class="xl:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit no-print">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Configurar Pago</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Empleado</label>
+                                <select id="calc-empleado" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="cargarDatosCalculo()">
+                                    <option value="">-- Seleccione un empleado --</option>
+                                </select>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Días Laborados</label>
+                                    <input type="number" id="calc-dias" value="31" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" oninput="calcularBoleta()">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Vacación 30% ($)</label>
+                                    <input type="number" id="calc-vacacion" value="0.00" step="0.01" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" oninput="calcularBoleta()">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Préstamos y Otros Descuentos ($)</label>
+                                <input type="number" id="calc-otros" value="0.00" step="0.01" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" oninput="calcularBoleta()">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Emisión</label>
+                                <input type="date" id="calc-fecha" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="actualizarVistaBoleta()">
+                            </div>
+
+                            <hr class="my-4">
+                            
+                            <button onclick="window.print()" id="btn-imprimir" class="w-full bg-green-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-green-700 transition flex items-center justify-center gap-2 opacity-50 cursor-not-allowed" disabled>
+                                <i class="fas fa-print"></i> Imprimir Boleta Actual
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Panel Derecho: Vista Previa de la Boleta (A imprimir) -->
+                    <div class="xl:col-span-2 overflow-x-auto bg-gray-200 p-4 rounded-xl flex justify-center items-start min-h-[500px]">
+                        
+                        <!-- ESTA ES LA ZONA QUE SE IMPRIME -->
+                        <div id="print-area" class="w-full max-w-[900px] bg-white">
+                            
+                            <div class="boleta-container">
+                                <div class="boleta-header">
+                                    <div class="boleta-info-left">
+                                        <p>SONSONATE ESTE DISTRITO DE ARMENIA</p>
+                                        <p>(RR-HH)</p>
+                                        <p>Dirección: AV. 3 DE ABRIL N°1</p>
+                                        <p>ARMENIA, SONSONATE</p>
+                                    </div>
+                                    
+                                    <div class="boleta-info-center flex-1 mx-4 mt-2">
+                                        <div class="boleta-title-main">
+                                            BOLETA DE PAGO: <span id="view-tipo-boleta">ADMINISTRATIVA</span>
+                                        </div>
+                                        
+                                        <div class="flex items-center gap-2 w-full justify-center">
+                                            <span class="input-box-label">FECHA:</span>
+                                            <div class="input-box text-red-600">
+                                                FECHA DE EMISION :<span id="view-fecha-emision">18 DE AGOSTO 2026</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="flex items-center gap-2 w-full justify-center mt-2">
+                                            <span class="input-box-label">NOMBRE:</span>
+                                            <div class="input-box" id="view-nombre-empleado">
+                                                SELECCIONE EMPLEADO
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col items-center gap-2">
+                                        <div class="boleta-logo">
+                                            LOGO<br>GOBIERNO MUNICIPAL<br>SONSONATE ESTE<br>DISTRITO ARMENIA
+                                        </div>
+                                        <span class="font-bold text-lg" id="view-numero-boleta">--</span>
+                                    </div>
+                                </div>
+
+                                <table class="boleta-table">
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="2" class="w-16">DIAS<br>LABORADOS</th>
+                                            <th rowspan="2" class="w-24">SUELDO<br>BASE</th>
+                                            <th rowspan="2" class="w-24">VACACION<br>30%</th>
+                                            <th rowspan="2" class="w-24">IMPORTE<br>DEVENGADO</th>
+                                            <th rowspan="2" class="w-20">RENTA</th>
+                                            <th colspan="3" class="coti-header">C O T I Z A C I O N E S</th>
+                                            <th rowspan="2" class="w-24">PRESTAMOS Y<br>OTROS</th>
+                                            <th rowspan="2" class="w-24">TOTAL<br>DESCUENTOS</th>
+                                            <th rowspan="2" class="w-24">IMPORTE<br>LIQUIDO</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="w-16">AFP<br>CONFIA</th>
+                                            <th class="w-16">AFP<br>CRECER</th>
+                                            <th class="w-16">ISSS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td id="view-dias" class="py-4">0</td>
+                                            <td id="view-sueldo-base">$0.00</td>
+                                            <td id="view-vacacion">$0.00</td>
+                                            <td id="view-devengado" class="font-bold">$0.00</td>
+                                            <td id="view-renta">$0.00</td>
+                                            <td id="view-afp-confia">$0.00</td>
+                                            <td id="view-afp-crecer">$0.00</td>
+                                            <td id="view-isss">$0.00</td>
+                                            <td id="view-otros">$0.00</td>
+                                            <td id="view-total-desc" class="font-bold">$0.00</td>
+                                            <td id="view-liquido" class="font-bold print-text-blue">$0.00</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                        <!-- FIN ZONA IMPRESIÓN -->
+
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN: Configuración -->
+            <section id="sec-config" class="hidden animate-fade-in">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Configuración del Sistema</h2>
+                
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 max-w-2xl">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Porcentajes de Ley (El Salvador)</h3>
+                    <p class="text-sm text-gray-500 mb-4">Estos valores se utilizan para calcular automáticamente las retenciones en la boleta.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ISSS Empleado (%)</label>
+                            <input type="number" id="conf-isss" value="3.00" step="0.01" class="w-full border border-gray-300 rounded-lg p-2 bg-gray-50" readonly>
+                            <span class="text-xs text-gray-500">Tope salarial $1,000.00</span>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">AFP Empleado (%)</label>
+                            <input type="number" id="conf-afp" value="7.25" step="0.01" class="w-full border border-gray-300 rounded-lg p-2 bg-gray-50" readonly>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+                        <i class="fas fa-info-circle mr-2"></i> Para el cálculo de Renta, el sistema aplica una aproximación simplificada o asume $0.00 por defecto para sueldos base mostrados en el ejemplo. En un sistema real complejo, se integraría la tabla de tramos de Hacienda.
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Modal Nuevo/Editar Empleado -->
+    <div id="modal-empleado" class="modal">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b bg-indigo-50">
+                <h3 class="text-lg font-bold text-indigo-900" id="modal-title">Registrar Nuevo Empleado</h3>
+                <button onclick="closeModal('modal-empleado')" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="form-empleado" onsubmit="guardarEmpleado(event)">
+                    <input type="hidden" id="emp-id">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                        <input type="text" id="emp-nombre" required class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ej. CRISTIAN EMILIO CARIAS PALACIOS">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cargo / Departamento</label>
+                        <select id="emp-cargo" required class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="ADMINISTRATIVA">Administrativa</option>
+                            <option value="OPERATIVA">Operativa</option>
+                            <option value="CAMPO">Campo</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sueldo Base ($)</label>
+                            <input type="number" id="emp-sueldo" required min="1" step="0.01" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="500.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Afiliación AFP</label>
+                            <select id="emp-afp" required class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="CONFIA">Confía</option>
+                                <option value="CRECER">Crecer</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" onclick="closeModal('modal-empleado')" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Mensaje (Alert personalizado) -->
+    <div id="modal-alert" class="modal">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 overflow-hidden text-center">
+            <div class="p-6">
+                <div id="alert-icon" class="text-4xl mb-4 text-indigo-500">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-2" id="alert-title">Mensaje</h3>
+                <p class="text-gray-600 mb-6" id="alert-message">Aquí va el mensaje.</p>
+                <button onclick="closeModal('modal-alert')" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Estado de la Aplicación (Memoria) ---
+        let empleados = [
+            // Dato de ejemplo basado en la imagen proporcionada
+            { id: Date.now().toString(), nombre: "CRISTIAN EMILIO CARIAS PALACIOS", cargo: "ADMINISTRATIVA", sueldo: 500.00, afp: "CONFIA" }
+        ];
+        let empleadoSeleccionado = null;
+        let boletaActual = null;
+
+        // Constantes de Ley El Salvador
+        const TASA_ISSS = 0.03;
+        const TOPE_ISSS = 1000.00;
+        const TASA_AFP = 0.0725;
+
+        // --- Inicialización ---
+        window.onload = () => {
+            const hoy = new Date();
+            const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('stat-fecha').textContent = hoy.toLocaleDateString('es-ES', opciones);
+            
+            // Setear fecha actual por defecto en el input date
+            document.getElementById('calc-fecha').value = hoy.toISOString().split('T')[0];
+
+            actualizarTablaEmpleados();
+            actualizarSelectEmpleados();
+            actualizarDashboard();
+        };
+
+        // --- Navegación ---
+        function showSection(sectionId) {
+            // Ocultar todas las secciones
+            ['dashboard', 'empleados', 'planilla', 'config'].forEach(id => {
+                document.getElementById(`sec-${id}`).classList.add('hidden');
+                document.getElementById(`sec-${id}`).classList.remove('block');
+                // Reset nav styles
+                document.getElementById(`nav-${id}`).classList.remove('bg-indigo-900', 'font-medium');
+                document.getElementById(`nav-${id}`).classList.add('hover:bg-indigo-700', 'text-indigo-100');
+            });
+
+            // Mostrar sección activa
+            document.getElementById(`sec-${sectionId}`).classList.remove('hidden');
+            document.getElementById(`sec-${sectionId}`).classList.add('block');
+            
+            // Style active nav
+            document.getElementById(`nav-${sectionId}`).classList.remove('hover:bg-indigo-700', 'text-indigo-100');
+            document.getElementById(`nav-${sectionId}`).classList.add('bg-indigo-900', 'font-medium');
+            
+            if(sectionId === 'planilla' && empleados.length === 0) {
+                showAlert("Aviso", "Primero debe registrar empleados en la sección 'Empleados' para generar una planilla.");
+            }
+        }
+
+        // --- Gestión de Modales ---
+        function openModal(id) {
+            document.getElementById(id).classList.add('modal-active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('modal-active');
+            if(id === 'modal-empleado') {
+                document.getElementById('form-empleado').reset();
+                document.getElementById('emp-id').value = '';
+                document.getElementById('modal-title').textContent = 'Registrar Nuevo Empleado';
+            }
+        }
+
+        function showAlert(title, message, type = 'info') {
+            document.getElementById('alert-title').textContent = title;
+            document.getElementById('alert-message').textContent = message;
+            
+            const icon = document.getElementById('alert-icon');
+            if(type === 'success') icon.innerHTML = '<i class="fas fa-check-circle text-green-500"></i>';
+            else if(type === 'error') icon.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500"></i>';
+            else icon.innerHTML = '<i class="fas fa-info-circle text-indigo-500"></i>';
+
+            openModal('modal-alert');
+        }
+
+        // --- STREAMING_CHUNK:Lógica CRUD de Empleados... ---
+        function guardarEmpleado(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('emp-id').value;
+            const nombre = document.getElementById('emp-nombre').value.toUpperCase();
+            const cargo = document.getElementById('emp-cargo').value;
+            const sueldo = parseFloat(document.getElementById('emp-sueldo').value);
+            const afp = document.getElementById('emp-afp').value;
+
+            if(id) {
+                // Editar
+                const index = empleados.findIndex(emp => emp.id === id);
+                if(index > -1) {
+                    empleados[index] = { id, nombre, cargo, sueldo, afp };
+                    showAlert("Éxito", "Empleado actualizado correctamente.", "success");
+                }
+            } else {
+                // Nuevo
+                const nuevoEmp = {
+                    id: Date.now().toString(),
+                    nombre,
+                    cargo,
+                    sueldo,
+                    afp
+                };
+                empleados.push(nuevoEmp);
+                showAlert("Éxito", "Empleado registrado correctamente.", "success");
+            }
+
+            closeModal('modal-empleado');
+            actualizarTablaEmpleados();
+            actualizarSelectEmpleados();
+            actualizarDashboard();
+        }
+
+        function editarEmpleado(id) {
+            const emp = empleados.find(e => e.id === id);
+            if(emp) {
+                document.getElementById('emp-id').value = emp.id;
+                document.getElementById('emp-nombre').value = emp.nombre;
+                document.getElementById('emp-cargo').value = emp.cargo;
+                document.getElementById('emp-sueldo').value = emp.sueldo;
+                document.getElementById('emp-afp').value = emp.afp;
+                document.getElementById('modal-title').textContent = 'Editar Empleado';
+                openModal('modal-empleado');
+            }
+        }
+
+        function eliminarEmpleado(id) {
+            // Reemplazo de confirm()
+            // En una app real, usaríamos un modal modal personalizado para confirmar
+            // Por simplicidad aquí lo borramos directamente y avisamos
+            empleados = empleados.filter(e => e.id !== id);
+            actualizarTablaEmpleados();
+            actualizarSelectEmpleados();
+            actualizarDashboard();
+            showAlert("Eliminado", "El empleado ha sido removido de la lista.", "success");
+            
+            // Limpiar selección de planilla si se borró el activo
+            if(empleadoSeleccionado && empleadoSeleccionado.id === id) {
+                document.getElementById('calc-empleado').value = "";
+                limpiarVistaBoleta();
+            }
+        }
+
+        function actualizarTablaEmpleados() {
+            const tbody = document.getElementById('empleados-tbody');
+            const emptyState = document.getElementById('empleados-empty');
+            
+            tbody.innerHTML = '';
+            
+            if(empleados.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                empleados.forEach((emp, index) => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50 transition';
+                    tr.innerHTML = `
+                        <td class="p-4 border-b font-mono text-xs text-gray-500">${index + 1}</td>
+                        <td class="p-4 border-b font-medium">${emp.nombre}</td>
+                        <td class="p-4 border-b">
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">${emp.cargo}</span>
+                        </td>
+                        <td class="p-4 border-b">$${emp.sueldo.toFixed(2)}</td>
+                        <td class="p-4 border-b">${emp.afp}</td>
+                        <td class="p-4 border-b text-right">
+                            <button onclick="editarEmpleado('${emp.id}')" class="text-indigo-600 hover:text-indigo-900 mx-1" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button onclick="eliminarEmpleado('${emp.id}')" class="text-red-500 hover:text-red-700 mx-1" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        // --- STREAMING_CHUNK:Lógica de Cálculo y Generación de Boleta... ---
+        function actualizarSelectEmpleados() {
+            const select = document.getElementById('calc-empleado');
+            // Guardar selección actual si existe
+            const valActual = select.value;
+            
+            select.innerHTML = '<option value="">-- Seleccione un empleado --</option>';
+            empleados.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp.id;
+                opt.textContent = `${emp.nombre} ($${emp.sueldo.toFixed(2)})`;
+                select.appendChild(opt);
+            });
+
+            // Restaurar selección si el empleado aún existe
+            if(valActual && empleados.find(e => e.id === valActual)) {
+                select.value = valActual;
+            }
+        }
+
+        function cargarDatosCalculo() {
+            const id = document.getElementById('calc-empleado').value;
+            if(!id) {
+                limpiarVistaBoleta();
+                return;
+            }
+
+            empleadoSeleccionado = empleados.find(e => e.id === id);
+            
+            // Reset valores por defecto al cambiar empleado
+            document.getElementById('calc-dias').value = "31";
+            document.getElementById('calc-vacacion').value = "0.00";
+            document.getElementById('calc-otros').value = "0.00";
+            
+            calcularBoleta();
+        }
+
+        function formatMoneda(num) {
+            return "$" + parseFloat(num).toFixed(2);
+        }
+
+        function calcularBoleta() {
+            if(!empleadoSeleccionado) return;
+
+            const btnImprimir = document.getElementById('btn-imprimir');
+            
+            // Obtener inputs
+            let diasLaborados = parseInt(document.getElementById('calc-dias').value) || 0;
+            let vacacion = parseFloat(document.getElementById('calc-vacacion').value) || 0;
+            let otrosDescuentos = parseFloat(document.getElementById('calc-otros').value) || 0;
+
+            // Limitar días (basado en mes comercial de 30 o meses de 31)
+            if(diasLaborados > 31) diasLaborados = 31;
+            if(diasLaborados < 0) diasLaborados = 0;
+            document.getElementById('calc-dias').value = diasLaborados;
+
+            const sueldoMensual = empleadoSeleccionado.sueldo;
+            
+            // Cálculo de Sueldo Base devengado en base a días (Asumiendo mes de 30 días para cálculo diario estándar)
+            let sueldoBaseDevengado = (sueldoMensual / 30) * diasLaborados;
+            // Ajuste específico si pone 31 días y gana el sueldo completo mensual (como en la foto ejemplo)
+            if(diasLaborados === 31 && sueldoBaseDevengado > sueldoMensual) {
+                 sueldoBaseDevengado = sueldoMensual;
+            }
+
+            // IMPORTE DEVENGADO (Base + Vacación + Horas extra, etc. Aquí simplificado)
+            const importeDevengado = sueldoBaseDevengado + vacacion;
+
+            // CÁLCULO DE COTIZACIONES
+            // 1. ISSS
+            let isss = 0;
+            if (importeDevengado > 0) {
+                const baseIsss = Math.min(importeDevengado, TOPE_ISSS);
+                isss = baseIsss * TASA_ISSS;
+            }
+
+            // 2. AFP
+            let afpConfia = 0;
+            let afpCrecer = 0;
+            const montoAfp = importeDevengado * TASA_AFP;
+            
+            if (empleadoSeleccionado.afp === 'CONFIA') {
+                afpConfia = montoAfp;
+            } else if (empleadoSeleccionado.afp === 'CRECER') {
+                afpCrecer = montoAfp;
+            }
+
+            // 3. RENTA (Simplificado para este ejemplo. Requiere tabla tramos ISR de Hacienda para ser exacto)
+            // Según la imagen, para $500 líquido es $0.
+            let renta = 0.00;
+            // *Nota para el usuario: El cálculo de renta exacto en ES requiere restar AFP e ISSS primero y aplicar tabla.*
+            const baseImponible = importeDevengado - (afpConfia + afpCrecer + isss);
+            // Simulación básica (no es la tabla oficial completa):
+            if (baseImponible > 472.00 && baseImponible <= 895.24) {
+                renta = ((baseImponible - 472.00) * 0.10) + 17.67;
+            } else if (baseImponible > 895.24) {
+                // Simplificado...
+                 renta = ((baseImponible - 895.24) * 0.20) + 60.00; 
+            }
+            // Forzamos 0 para montos bajos como el del ejemplo
+            if (baseImponible <= 500) renta = 0; 
+
+            // TOTAL DESCUENTOS
+            const totalDescuentos = afpConfia + afpCrecer + isss + renta + otrosDescuentos;
+
+            // IMPORTE LIQUIDO
+            const importeLiquido = importeDevengado - totalDescuentos;
+
+            // Actualizar Vista de Boleta
+            document.getElementById('view-tipo-boleta').textContent = empleadoSeleccionado.cargo;
+            document.getElementById('view-nombre-empleado').textContent = empleadoSeleccionado.nombre;
+            
+            // Generar número de boleta aleatorio para simular
+            document.getElementById('view-numero-boleta').textContent = Math.floor(Math.random() * 100) + 1;
+
+            document.getElementById('view-dias').textContent = diasLaborados;
+            document.getElementById('view-sueldo-base').textContent = formatMoneda(sueldoBaseDevengado);
+            document.getElementById('view-vacacion').textContent = formatMoneda(vacacion);
+            document.getElementById('view-devengado').textContent = formatMoneda(importeDevengado);
+            document.getElementById('view-renta').textContent = formatMoneda(renta);
+            
+            document.getElementById('view-afp-confia').textContent = formatMoneda(afpConfia);
+            document.getElementById('view-afp-crecer').textContent = formatMoneda(afpCrecer);
+            document.getElementById('view-isss').textContent = formatMoneda(isss);
+            
+            document.getElementById('view-otros').textContent = formatMoneda(otrosDescuentos);
+            document.getElementById('view-total-desc').textContent = formatMoneda(totalDescuentos);
+            document.getElementById('view-liquido').textContent = formatMoneda(importeLiquido);
+
+            actualizarVistaBoleta(); // Actualiza fechas
+
+            // Habilitar impresión
+            btnImprimir.disabled = false;
+            btnImprimir.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        function actualizarVistaBoleta() {
+            const fechaInput = document.getElementById('calc-fecha').value;
+            if(fechaInput) {
+                const dateObj = new Date(fechaInput + 'T00:00:00'); // Evitar timezone issues
+                const mes = dateObj.toLocaleString('es-ES', { month: 'long' }).toUpperCase();
+                const dia = dateObj.getDate();
+                const anio = dateObj.getFullYear();
+                document.getElementById('view-fecha-emision').textContent = `${dia} DE ${mes} ${anio}`;
+            }
+        }
+
+        function limpiarVistaBoleta() {
+            empleadoSeleccionado = null;
+            
+            document.getElementById('view-tipo-boleta').textContent = "ADMINISTRATIVA";
+            document.getElementById('view-nombre-empleado').textContent = "SELECCIONE EMPLEADO";
+            document.getElementById('view-numero-boleta').textContent = "--";
+            document.getElementById('view-fecha-emision').textContent = "---";
+
+            const idsReset = ['view-sueldo-base', 'view-vacacion', 'view-devengado', 'view-renta', 'view-afp-confia', 'view-afp-crecer', 'view-isss', 'view-otros', 'view-total-desc', 'view-liquido'];
+            
+            document.getElementById('view-dias').textContent = "0";
+            idsReset.forEach(id => document.getElementById(id).textContent = "$0.00");
+
+            const btnImprimir = document.getElementById('btn-imprimir');
+            btnImprimir.disabled = true;
+            btnImprimir.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        function actualizarDashboard() {
+            document.getElementById('stat-total-emp').textContent = empleados.length;
+            
+            // Calcular planilla estimada (Sueldos base totales)
+            const totalSueldos = empleados.reduce((sum, emp) => sum + emp.sueldo, 0);
+            document.getElementById('stat-total-planilla').textContent = formatMoneda(totalSueldos);
+        }
+
+    </script>
+</body>
+</html>

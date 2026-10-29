@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="../estilos/estilos.css">
+<title>Sistema RRHH - Planillas y Boletas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<style>
+
+</style>
+</head>
+<body class="h-screen overflow-hidden">
+<div class="flex h-full">
+
+  <aside class="hidden md:flex w-64 bg-[#263c86] text-white flex-col">
+    <div class="p-6 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center"><i class="fa-solid fa-users-gear"></i></div>
+        <div>
+          <h1 class="font-extrabold text-xl">RRHH Pro</h1>
+          <p class="text-xs text-indigo-200">Gestión de planillas</p>
+        </div>
+      </div>
+    </div>
+    <nav class="p-4 space-y-2 flex-1">
+      <button class="nav-btn w-full text-left px-4 py-3 rounded-lg bg-white/10" data-sec="dashboard"><i class="fa-solid fa-chart-pie w-6"></i> Inicio</button>
+      <button class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-white/10" data-sec="empleados"><i class="fa-solid fa-users w-6"></i> Empleados</button>
+      <button class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-white/10" data-sec="planilla"><i class="fa-solid fa-file-invoice-dollar w-6"></i> Planillas</button>
+      <button class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-white/10" data-sec="config"><i class="fa-solid fa-gear w-6"></i> Configuración</button>
+    </nav>
+    <div class="p-4 border-t border-white/10 text-xs text-indigo-200 text-center">
+      Sonsonate Este · Distrito de Armenia
+    </div>
+  </aside>
+
+  <main class="flex-1 overflow-y-auto">
+    <header class="md:hidden sticky top-0 z-40 bg-white border-b p-4 flex justify-between items-center">
+      <strong class="text-[#263c86]">RRHH Pro</strong>
+      <select id="mobileNav" class="border rounded-lg p-2 text-sm">
+        <option value="dashboard">Inicio</option>
+        <option value="empleados">Empleados</option>
+        <option value="planilla">Planillas</option>
+        <option value="config">Configuración</option>
+      </select>
+    </header>
+
+    <div class="p-4 md:p-8">
+
+      <!-- DASHBOARD -->
+      <section id="sec-dashboard">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-3xl font-extrabold">Panel General</h2>
+            <p class="text-gray-500 mt-1">Resumen rápido para Recursos Humanos</p>
+          </div>
+          <div class="text-right hidden sm:block">
+            <div class="text-xs uppercase text-gray-400">Fecha</div>
+            <div id="stat-fecha" class="font-semibold"></div>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white rounded-2xl border p-5">
+            <div class="text-sm text-gray-500">Empleados</div>
+            <div id="stat-empleados" class="text-3xl font-extrabold mt-1">0</div>
+          </div>
+          <div class="bg-white rounded-2xl border p-5">
+            <div class="text-sm text-gray-500">Sueldos base</div>
+            <div id="stat-sueldos" class="text-3xl font-extrabold mt-1">$0.00</div>
+          </div>
+          <div class="bg-white rounded-2xl border p-5">
+            <div class="text-sm text-gray-500">AFP estimada</div>
+            <div id="stat-afp" class="text-3xl font-extrabold mt-1">$0.00</div>
+          </div>
+          <div class="bg-white rounded-2xl border p-5">
+            <div class="text-sm text-gray-500">Líquido estimado</div>
+            <div id="stat-liquido" class="text-3xl font-extrabold mt-1">$0.00</div>
+          </div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-5">
+          <div class="lg:col-span-2 bg-white rounded-2xl border p-6">
+            <h3 class="font-bold text-lg mb-2">Flujo de trabajo recomendado</h3>
+            <p class="text-gray-600 mb-4">Registre o actualice empleados, revise la boleta individual y luego genere la planilla general o todas las boletas en un solo proceso.</p>
+            <div class="grid sm:grid-cols-3 gap-3">
+              <button onclick="showSection('empleados')" class="p-4 rounded-xl bg-indigo-50 text-indigo-800 text-left"><b>1. Empleados</b><br><span class="text-sm">Crear y editar</span></button>
+              <button onclick="showSection('planilla');setPlanillaMode('individual')" class="p-4 rounded-xl bg-emerald-50 text-emerald-800 text-left"><b>2. Individual</b><br><span class="text-sm">Revisar boleta</span></button>
+              <button onclick="showSection('planilla');setPlanillaMode('general')" class="p-4 rounded-xl bg-amber-50 text-amber-800 text-left"><b>3. General</b><br><span class="text-sm">Generar todo</span></button>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl border p-6">
+            <h3 class="font-bold text-lg mb-3">Respaldo</h3>
+            <p class="text-sm text-gray-500 mb-4">Los empleados quedan guardados en este navegador mediante almacenamiento local.</p>
+            <div class="space-y-2">
+              <button onclick="exportarDatos()" class="w-full px-4 py-2 rounded-lg border hover:bg-gray-50"><i class="fa-solid fa-download mr-2"></i>Exportar respaldo JSON</button>
+              <label class="w-full block px-4 py-2 rounded-lg border hover:bg-gray-50 cursor-pointer text-center">
+                <i class="fa-solid fa-upload mr-2"></i>Importar respaldo
+                <input id="import-file" type="file" accept=".json" class="hidden">
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- EMPLEADOS -->
+      <section id="sec-empleados" class="hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h2 class="text-3xl font-extrabold">Empleados</h2>
+            <p class="text-gray-500">Base de datos para la generación de planillas</p>
+          </div>
+          <button onclick="openEmployeeModal()" class="bg-[#263c86] text-white px-5 py-3 rounded-xl font-semibold"><i class="fa-solid fa-plus mr-2"></i>Nuevo empleado</button>
+        </div>
+
+        <div class="bg-white rounded-2xl border overflow-hidden">
+          <div class="p-4 border-b flex flex-wrap gap-3 items-center justify-between">
+            <div class="relative flex-1 min-w-[240px] max-w-md">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-gray-400"></i>
+              <input id="emp-search" class="w-full border rounded-xl pl-10 pr-3 py-2.5" placeholder="Buscar por nombre o cargo">
+            </div>
+            <div id="emp-count" class="text-sm text-gray-500"></div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+                <tr>
+                  <th class="p-4 text-left">#</th>
+                  <th class="p-4 text-left">Nombre</th>
+                  <th class="p-4 text-left">Tipo</th>
+                  <th class="p-4 text-right">Sueldo base</th>
+                  <th class="p-4 text-center">AFP</th>
+                  <th class="p-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="empleados-body"></tbody>
+            </table>
+          </div>
+          <div id="empleados-empty" class="hidden p-10 text-center text-gray-500">No hay empleados registrados.</div>
+        </div>
+      </section>
+
+      <!-- PLANILLAS -->
+      <section id="sec-planilla" class="hidden">
+        <div class="mb-5">
+          <h2 class="text-3xl font-extrabold">Planillas y Boletas</h2>
+          <p class="text-gray-500">Emisión individual y generación general</p>
+        </div>
+
+        <div class="inline-flex gap-2 bg-gray-100 rounded-xl p-1 mb-6 no-print">
+          <button id="tab-individual" onclick="setPlanillaMode('individual')" class="px-5 py-2.5 rounded-lg font-semibold tab-active"><i class="fa-solid fa-user mr-2"></i>Uno por uno</button>
+          <button id="tab-general" onclick="setPlanillaMode('general')" class="px-5 py-2.5 rounded-lg font-semibold tab-inactive"><i class="fa-solid fa-users mr-2"></i>Planilla general</button>
+        </div>
+
+        <!-- INDIVIDUAL -->
+        <div id="mode-individual" class="grid xl:grid-cols-3 gap-5">
+          <div class="bg-white rounded-2xl border p-5 no-print">
+            <h3 class="font-bold text-lg mb-4">Configurar pago individual</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="text-sm font-medium">Empleado</label>
+                <select id="calc-empleado" class="w-full border rounded-xl p-2.5 mt-1"></select>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-sm font-medium">Días laborados</label>
+                  <input id="calc-dias" type="number" min="0" max="31" value="31" class="w-full border rounded-xl p-2.5 mt-1">
+                </div>
+                <div>
+                  <label class="text-sm font-medium">Vacación 30%</label>
+                  <input id="calc-vacacion" type="number" step="0.01" value="0" class="w-full border rounded-xl p-2.5 mt-1">
+                </div>
+              </div>
+              <div>
+                <label class="text-sm font-medium">Renta manual ($)</label>
+                <input id="calc-renta" type="number" step="0.01" value="0" class="w-full border rounded-xl p-2.5 mt-1">
+                <p class="text-xs text-gray-400 mt-1">Se deja editable para evitar aplicar una tabla de renta incorrecta.</p>
+              </div>
+              <div>
+                <label class="text-sm font-medium">Préstamos y otros ($)</label>
+                <input id="calc-otros" type="number" step="0.01" value="0" class="w-full border rounded-xl p-2.5 mt-1">
+              </div>
+              <div>
+                <label class="text-sm font-medium">Fecha de emisión</label>
+                <input id="calc-fecha" type="date" class="w-full border rounded-xl p-2.5 mt-1">
+              </div>
+              <button id="btn-print-individual" onclick="printIndividual()" disabled class="w-full bg-emerald-600 disabled:opacity-40 text-white rounded-xl px-4 py-3 font-semibold"><i class="fa-solid fa-print mr-2"></i>Imprimir boleta actual</button>
+            </div>
+          </div>
+
+          <div class="xl:col-span-2 bg-gray-200 rounded-2xl p-4 overflow-x-auto">
+            <div id="individual-print-area" class="print-target min-w-[850px]">
+              <div id="boleta-individual"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GENERAL -->
+        <div id="mode-general" class="hidden">
+          <div class="bg-white rounded-2xl border p-5 mb-5 no-print">
+            <div class="grid md:grid-cols-4 gap-4 items-end">
+              <div>
+                <label class="text-sm font-medium">Fecha de emisión</label>
+                <input id="general-fecha" type="date" class="w-full border rounded-xl p-2.5 mt-1">
+              </div>
+              <div>
+                <label class="text-sm font-medium">Días por defecto</label>
+                <input id="general-dias" type="number" min="0" max="31" value="31" class="w-full border rounded-xl p-2.5 mt-1">
+              </div>
+              <button onclick="printGeneralList()" class="bg-[#263c86] text-white rounded-xl px-4 py-3 font-semibold"><i class="fa-solid fa-table-list mr-2"></i>Imprimir planilla general</button>
+              <button onclick="printAllSlips()" class="bg-emerald-600 text-white rounded-xl px-4 py-3 font-semibold"><i class="fa-solid fa-print mr-2"></i>Imprimir todas las boletas</button>
+            </div>
+            <div class="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+              Puede editar Vacación, Renta y Otros directamente en cada fila antes de imprimir. El sistema recalcula automáticamente los totales.
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border overflow-hidden no-print">
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="p-3 text-left">#</th>
+                    <th class="p-3 text-left min-w-[230px]">Empleado</th>
+                    <th class="p-3 text-center">Días</th>
+                    <th class="p-3 text-right">Sueldo</th>
+                    <th class="p-3 text-right">Vacación</th>
+                    <th class="p-3 text-right">Renta</th>
+                    <th class="p-3 text-right">AFP</th>
+                    <th class="p-3 text-right">ISSS</th>
+                    <th class="p-3 text-right">Otros</th>
+                    <th class="p-3 text-right">Descuentos</th>
+                    <th class="p-3 text-right">Líquido</th>
+                  </tr>
+                </thead>
+                <tbody id="general-body"></tbody>
+                <tfoot id="general-foot" class="font-bold bg-indigo-50"></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONFIG -->
+      <section id="sec-config" class="hidden">
+        <div class="mb-6">
+          <h2 class="text-3xl font-extrabold">Configuración</h2>
+          <p class="text-gray-500">Parámetros utilizados por el sistema</p>
+        </div>
+        <div class="bg-white rounded-2xl border p-6 max-w-3xl">
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label class="text-sm font-medium">ISSS empleado (%)</label>
+              <input id="conf-isss" type="number" step="0.01" value="3.00" class="w-full border rounded-xl p-2.5 mt-1">
+            </div>
+            <div>
+              <label class="text-sm font-medium">Tope ISSS ($)</label>
+              <input id="conf-tope-isss" type="number" step="0.01" value="1000.00" class="w-full border rounded-xl p-2.5 mt-1">
+            </div>
+            <div>
+              <label class="text-sm font-medium">AFP empleado (%)</label>
+              <input id="conf-afp" type="number" step="0.01" value="7.25" class="w-full border rounded-xl p-2.5 mt-1">
+            </div>
+          </div>
+          <div class="mt-4 flex gap-3">
+            <button onclick="saveConfig()" class="bg-[#263c86] text-white px-5 py-2.5 rounded-xl font-semibold">Guardar parámetros</button>
+            <button onclick="resetConfig()" class="border px-5 py-2.5 rounded-xl">Restablecer</button>
+          </div>
+          <p class="mt-4 text-xs text-gray-500">Verifique periódicamente que los porcentajes y topes configurados coincidan con la normativa y políticas vigentes de su institución.</p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- MODAL EMPLEADO -->
+<div id="employee-modal" class="modal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="p-5 border-b flex items-center justify-between">
+      <h3 id="employee-modal-title" class="font-bold text-lg">Nuevo empleado</h3>
+      <button onclick="closeEmployeeModal()" class="text-gray-400"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <form id="employee-form" class="p-5 space-y-4">
+      <input id="emp-id" type="hidden">
+      <div>
+        <label class="text-sm font-medium">Nombre completo</label>
+        <input id="emp-nombre" required class="w-full border rounded-xl p-2.5 mt-1" placeholder="NOMBRE COMPLETO">
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="text-sm font-medium">Tipo de boleta / área</label>
+          <select id="emp-cargo" class="w-full border rounded-xl p-2.5 mt-1">
+            <option value="ADMINISTRATIVA">Administrativa</option>
+            <option value="OPERATIVA">Operativa</option>
+            <option value="CAMPO">Campo</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm font-medium">AFP</label>
+          <select id="emp-afp" class="w-full border rounded-xl p-2.5 mt-1">
+            <option value="CONFIA">Confía</option>
+            <option value="CRECER">Crecer</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Sueldo base mensual ($)</label>
+        <input id="emp-sueldo" type="number" min="0" step="0.01" required class="w-full border rounded-xl p-2.5 mt-1">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeEmployeeModal()" class="border px-4 py-2 rounded-xl">Cancelar</button>
+        <button type="submit" class="bg-[#263c86] text-white px-5 py-2 rounded-xl font-semibold">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- PRINT: PLANILLA GENERAL -->
+<div id="general-print-area" class="general-print-area"></div>
+<!-- PRINT: TODAS LAS BOLETAS -->
+<div id="all-slips-print-area" class="all-slips-print-area"></div>
+
+<script src="../js/rrhh.js"></script>
+</body>
+</html>
